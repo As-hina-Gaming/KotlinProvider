@@ -26,7 +26,8 @@ dependencies {
     val kotlinVersion: String by System.getProperties()
     val paperApiVersion: String by project
 
-    compileOnly(kotlin("stdlib", kotlinVersion))
+    implementation(kotlin("stdlib", kotlinVersion))
+
     compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
 }
 
@@ -62,8 +63,7 @@ tasks {
         val apiVersion =
             "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
         val pluginDescription: String by project
-        val pluginDependencies =
-            "\n  - KotlinProvider${getAsYamlList(project.properties["pluginDependencies"])}"
+        val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
         val authors: String = getAsYamlList(project.properties["authors"])
 
         val props: LinkedHashMap<String, String> = linkedMapOf(
