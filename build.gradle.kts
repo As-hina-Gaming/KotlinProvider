@@ -1,4 +1,6 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import java.util.stream.Collectors
 
 plugins {
@@ -25,10 +27,13 @@ repositories {
 dependencies {
     val kotlinVersion: String by System.getProperties()
     val paperApiVersion: String by project
+    val velocityApiVersion: String by project
 
     implementation(kotlin("stdlib", kotlinVersion))
 
     compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
+    compileOnly("com.velocitypowered", "velocity-api", velocityApiVersion)
+    annotationProcessor("com.velocitypowered", "velocity-api", velocityApiVersion)
 }
 
 publishing {
@@ -59,64 +64,90 @@ tasks {
     withType<Copy> {
         outputs.upToDateWhen { false }
 
-        val mainClass = "${project.group}.${project.name.toLowerCase()}.${project.properties["mainClass"]}"
-        val apiVersion =
-            "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
-        val pluginDescription: String by project
-        val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
-        val authors: String = getAsYamlList(project.properties["authors"])
-
-        val props: LinkedHashMap<String, String> = linkedMapOf(
-            "plugin_name" to project.name,
-            "plugin_description" to pluginDescription,
-            "plugin_version" to version.toString(),
-            "plugin_main_class" to mainClass,
-            "plugin_api_version" to apiVersion,
-            "plugin_dependencies" to pluginDependencies,
-            "plugin_authors" to authors
-        )
-
         filesMatching("plugin.yml") {
+            val mainClass = "${project.group}.${project.name.toLowerCaseAsciiOnly()}.paper.${project.properties["mainClass"]}"
+            val apiVersion =
+                "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
+            val pluginDescription: String by project
+            val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
+            val authors: String = getAsYamlList(project.properties["authors"])
+
+            val props: LinkedHashMap<String, String> = linkedMapOf(
+                "plugin_name" to project.name,
+                "plugin_description" to pluginDescription,
+                "plugin_version" to version.toString(),
+                "plugin_main_class" to mainClass,
+                "plugin_api_version" to apiVersion,
+                "plugin_dependencies" to pluginDependencies,
+                "plugin_authors" to authors
+            )
+
             expand(props)
         }
     }
 
     shadowJar {
-        archiveClassifier.set("")
         project.configurations.implementation.get().isCanBeResolved = true
-        configurations = listOf(project.configurations.implementation.get())
     }
 
-    build {
-        dependsOn(shadowJar)
-    }
-
-    //
-    create("copyPluginToServer") {
-        dependsOn(build)
+    val velocityJar = register<ShadowJar>("velocityJar") {
         group = "plugin"
         enabled = true
 
+        archiveClassifier.set("")
+        configurations = listOf(project.configurations.implementation.get())
+
+        archiveBaseName.set("${archiveBaseName.get()}-Velocity")
+
+        from(sourceSets.main.get().output) {
+            exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**")
+            exclude("plugin.yml")
+        }
+    }
+
+    val paperJar = register<ShadowJar>("paperJar") {
+        group = "plugin"
+        enabled = true
+
+        archiveClassifier.set("")
+        configurations = listOf(project.configurations.implementation.get())
+
+        archiveBaseName.set("${archiveBaseName.get()}-Paper")
+
+        from(sourceSets.main.get().output) {
+            exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/velocity/**")
+        }
+    }
+
+    build {
+        dependsOn(velocityJar)
+        dependsOn(paperJar)
+    }
+
+    //
+    create("copyPluginToPaperServer") {
+        dependsOn(build)
+        group = "plugin"
+        enabled = false
+
         val serverPath: String by project
-        enabled = serverPath.isNotBlank()
 
-        outputs.upToDateWhen { false }
-        val libsDir = File("${project.buildDir.absolutePath}${File.separator}libs")
-        val destinationFile =
-            File("$serverPath${File.separator}plugins${File.separator}${rootProject.name.toLowerCase()}.jar")
-        val jarFiles: List<File>? = libsDir.listFiles()?.filter { it.extension == "jar" }
+        if (serverPath.isNotBlank() && File(serverPath).exists()) {
+            outputs.upToDateWhen { false }
+            val libsDir = File("${project.buildDir.absolutePath}${File.separator}libs")
+            val destinationFile =
+                File("$serverPath${File.separator}plugins${File.separator}${rootProject.name.toLowerCase()}.jar")
+            val paperJarFiles: List<File>? =
+                libsDir.listFiles()?.filter { it.extension == "jar" && it.name.contains("Paper") }
 
-        enabled =
-            if (jarFiles?.size == 1) {
-                jarFiles[0].copyTo(
-                    destinationFile,
-                    true
-                )
-
-                destinationFile.exists()
-            } else {
-                false
-            }
+                if (paperJarFiles?.size == 1) {
+                    paperJarFiles[0].copyTo(
+                        destinationFile,
+                        true
+                    )
+                    enabled = destinationFile.exists()
+                }
+        }
     }
 
     create<Copy>("generateIntelliJRunConfig") {

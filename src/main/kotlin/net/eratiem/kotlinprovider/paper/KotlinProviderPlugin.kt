@@ -1,4 +1,4 @@
-package net.eratiem.kotlinprovider
+package net.eratiem.kotlinprovider.paper
 
 import org.bukkit.plugin.java.JavaPlugin
 
