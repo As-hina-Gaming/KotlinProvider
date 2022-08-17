@@ -36,28 +36,8 @@ dependencies {
     annotationProcessor("com.velocitypowered", "velocity-api", velocityApiVersion)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven-java") {
-            groupId = project.group.toString()
-            artifactId = project.name.toLowerCase()
-            version = project.version.toString()
-
-            from(components["java"])
-        }
-    }
-    repositories {
-        maven {
-            url = uri(
-                "https://artifactory.bit-build.de/artifactory/eratiem"
-                        + (if (project.version.toString().contains("SNAPSHOT"))
-                    "-snapshots" else "")
-            )
-
-            bitBuildCredentials(this)
-        }
-    }
-}
+lateinit var velocityJar: TaskProvider<ShadowJar>
+lateinit var paperJar: TaskProvider<ShadowJar>
 
 tasks {
     // Write Properties into plugin.yml
@@ -65,7 +45,8 @@ tasks {
         outputs.upToDateWhen { false }
 
         filesMatching("plugin.yml") {
-            val mainClass = "${project.group}.${project.name.toLowerCaseAsciiOnly()}.paper.${project.properties["mainClass"]}"
+            val mainClass =
+                "${project.group}.${project.name.toLowerCaseAsciiOnly()}.paper.${project.properties["mainClass"]}"
             val apiVersion =
                 "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
             val pluginDescription: String by project
@@ -86,18 +67,20 @@ tasks {
         }
     }
 
-    shadowJar {
-        project.configurations.implementation.get().isCanBeResolved = true
+    jar {
+        enabled = false
     }
 
-    val velocityJar = register<ShadowJar>("velocityJar") {
+    project.configurations.implementation.get().isCanBeResolved = true
+
+    velocityJar = register<ShadowJar>("velocityJar") {
         group = "plugin"
         enabled = true
 
         archiveClassifier.set("")
         configurations = listOf(project.configurations.implementation.get())
 
-        archiveBaseName.set("${archiveBaseName.get()}-Velocity")
+        archiveClassifier.set("velocity")
 
         from(sourceSets.main.get().output) {
             exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**")
@@ -105,14 +88,14 @@ tasks {
         }
     }
 
-    val paperJar = register<ShadowJar>("paperJar") {
+    paperJar = register<ShadowJar>("paperJar") {
         group = "plugin"
         enabled = true
 
         archiveClassifier.set("")
         configurations = listOf(project.configurations.implementation.get())
 
-        archiveBaseName.set("${archiveBaseName.get()}-Paper")
+        archiveClassifier.set("paper")
 
         from(sourceSets.main.get().output) {
             exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/velocity/**")
@@ -140,13 +123,13 @@ tasks {
             val paperJarFiles: List<File>? =
                 libsDir.listFiles()?.filter { it.extension == "jar" && it.name.contains("Paper") }
 
-                if (paperJarFiles?.size == 1) {
-                    paperJarFiles[0].copyTo(
-                        destinationFile,
-                        true
-                    )
-                    enabled = destinationFile.exists()
-                }
+            if (paperJarFiles?.size == 1) {
+                paperJarFiles[0].copyTo(
+                    destinationFile,
+                    true
+                )
+                enabled = destinationFile.exists()
+            }
         }
     }
 
@@ -190,6 +173,32 @@ tasks {
 
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = javaVersion.toString()
+    }
+}
+
+
+
+publishing {
+    publications {
+        create<MavenPublication>("artifactory") {
+            groupId = project.group.toString()
+            artifactId = project.name.toLowerCase()
+            version = project.version.toString()
+
+            artifact(paperJar)
+            artifact(velocityJar)
+        }
+    }
+    repositories {
+        maven {
+            url = uri(
+                "https://artifactory.bit-build.de/artifactory/eratiem"
+                        + (if (project.version.toString().contains("SNAPSHOT"))
+                    "-snapshots" else "")
+            )
+
+            bitBuildCredentials(this)
+        }
     }
 }
 
