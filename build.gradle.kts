@@ -8,6 +8,7 @@ plugins {
     val shadowVersion: String by System.getProperties()
 
     kotlin("jvm").version(kotlinVersion)
+    kotlin("kapt").version(kotlinVersion)
     id("com.github.johnrengelman.shadow").version(shadowVersion)
 
     id("maven-publish")
@@ -33,7 +34,7 @@ dependencies {
 
     compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
     compileOnly("com.velocitypowered", "velocity-api", velocityApiVersion)
-    annotationProcessor("com.velocitypowered", "velocity-api", velocityApiVersion)
+    kapt("com.velocitypowered", "velocity-api", velocityApiVersion)
 }
 
 lateinit var velocityJar: TaskProvider<ShadowJar>
@@ -99,6 +100,7 @@ tasks {
 
         from(sourceSets.main.get().output) {
             exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/velocity/**")
+            exclude("velocity-plugin.json")
         }
     }
 
