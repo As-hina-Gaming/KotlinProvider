@@ -37,9 +37,7 @@ dependencies {
     kapt("com.velocitypowered", "velocity-api", velocityApiVersion)
 }
 
-lateinit var velocityJar: TaskProvider<ShadowJar>
-lateinit var paperJar: TaskProvider<ShadowJar>
-lateinit var onlyKotlinJar: TaskProvider<ShadowJar>
+val jarTasks: MutableSet<TaskProvider<ShadowJar>> = mutableSetOf()
 
 tasks {
     // Write Properties into plugin.yml
@@ -75,7 +73,7 @@ tasks {
 
     project.configurations.implementation.get().isCanBeResolved = true
 
-    velocityJar = registerShadowJarJob(
+    registerShadowJarJob(
         "velocityJar", listOf(
             "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
             "plugin.yml"
@@ -83,7 +81,7 @@ tasks {
         "velocity"
     )
 
-    paperJar = registerShadowJarJob(
+    registerShadowJarJob(
         "paperJar", listOf(
             "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
             "velocity-plugin.json"
@@ -91,18 +89,17 @@ tasks {
         "paper"
     )
 
-    onlyKotlinJar = registerShadowJarJob("onlyKotlinJar", listOf(
-        "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/**",
-        "velocity-plugin.json",
-        "paper.yml"
-    ),
+    registerShadowJarJob(
+        "onlyKotlinJar", listOf(
+            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/**",
+            "velocity-plugin.json",
+            "paper.yml"
+        ),
         ""
     )
 
     build {
-        dependsOn(velocityJar)
-        dependsOn(paperJar)
-        dependsOn(onlyKotlinJar)
+        jarTasks.forEach(this::dependsOn)
     }
 
     //
@@ -183,9 +180,7 @@ publishing {
             artifactId = project.name.toLowerCase()
             version = project.version.toString()
 
-            artifact(paperJar)
-            artifact(velocityJar)
-            artifact(onlyKotlinJar)
+            jarTasks.forEach(this::artifact)
         }
     }
     repositories {
@@ -201,18 +196,20 @@ publishing {
     }
 }
 
-fun registerShadowJarJob(name: String, excludes: List<String>, classifier: String) = tasks.register<ShadowJar>(name) {
-    group = "plugin"
-    enabled = true
+fun registerShadowJarJob(name: String, excludes: List<String>, classifier: String) {
+    jarTasks.add(tasks.register<ShadowJar>(name) {
+        group = "plugin"
+        enabled = true
 
-    archiveClassifier.set("")
-    configurations = listOf(project.configurations.implementation.get())
+        archiveClassifier.set("")
+        configurations = listOf(project.configurations.implementation.get())
 
-    archiveClassifier.set(classifier)
+        archiveClassifier.set(classifier)
 
-    from(sourceSets.main.get().output) {
-        exclude(excludes)
-    }
+        from(sourceSets.main.get().output) {
+            exclude(excludes)
+        }
+    })
 }
 
 fun getAsYamlList(commaSeparatedList: Any?): String {
