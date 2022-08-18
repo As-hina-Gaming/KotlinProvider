@@ -39,6 +39,7 @@ dependencies {
 
 lateinit var velocityJar: TaskProvider<ShadowJar>
 lateinit var paperJar: TaskProvider<ShadowJar>
+lateinit var onlyKotlinJar: TaskProvider<ShadowJar>
 
 tasks {
     // Write Properties into plugin.yml
@@ -74,39 +75,34 @@ tasks {
 
     project.configurations.implementation.get().isCanBeResolved = true
 
-    velocityJar = register<ShadowJar>("velocityJar") {
-        group = "plugin"
-        enabled = true
+    velocityJar = registerShadowJarJob(
+        "velocityJar", listOf(
+            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
+            "plugin.yml"
+        ),
+        "velocity"
+    )
 
-        archiveClassifier.set("")
-        configurations = listOf(project.configurations.implementation.get())
+    paperJar = registerShadowJarJob(
+        "paperJar", listOf(
+            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
+            "velocity-plugin.json"
+        ),
+        "paper"
+    )
 
-        archiveClassifier.set("velocity")
-
-        from(sourceSets.main.get().output) {
-            exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**")
-            exclude("plugin.yml")
-        }
-    }
-
-    paperJar = register<ShadowJar>("paperJar") {
-        group = "plugin"
-        enabled = true
-
-        archiveClassifier.set("")
-        configurations = listOf(project.configurations.implementation.get())
-
-        archiveClassifier.set("paper")
-
-        from(sourceSets.main.get().output) {
-            exclude("${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/velocity/**")
-            exclude("velocity-plugin.json")
-        }
-    }
+    onlyKotlinJar = registerShadowJarJob("onlyKotlinJar", listOf(
+        "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/**",
+        "velocity-plugin.json",
+        "paper.yml"
+    ),
+        ""
+    )
 
     build {
         dependsOn(velocityJar)
         dependsOn(paperJar)
+        dependsOn(onlyKotlinJar)
     }
 
     //
@@ -189,6 +185,7 @@ publishing {
 
             artifact(paperJar)
             artifact(velocityJar)
+            artifact(onlyKotlinJar)
         }
     }
     repositories {
@@ -201,6 +198,20 @@ publishing {
 
             bitBuildCredentials(this)
         }
+    }
+}
+
+fun registerShadowJarJob(name: String, excludes: List<String>, classifier: String) = tasks.register<ShadowJar>(name) {
+    group = "plugin"
+    enabled = true
+
+    archiveClassifier.set("")
+    configurations = listOf(project.configurations.implementation.get())
+
+    archiveClassifier.set(classifier)
+
+    from(sourceSets.main.get().output) {
+        exclude(excludes)
     }
 }
 
@@ -217,10 +228,7 @@ fun getAsYamlList(commaSeparatedList: Any?): String {
 
 fun bitBuildCredentials(maven: MavenArtifactRepository) {
     maven.credentials {
-        val mavenUsr: String by System.getProperties()
-        val mavenPsw: String by System.getProperties()
-
-        username = mavenUsr
-        password = mavenPsw
+        username = System.getenv("ARTIFACTORY_USER")
+        password = System.getenv("ARTIFACTORY_PASS")
     }
 }
