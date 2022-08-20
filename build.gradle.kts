@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "net.eratiem"
-version = "1.7.10"
+version = "1.7.20-Beta"
 
 repositories {
     maven {
