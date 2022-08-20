@@ -1,8 +1,8 @@
-package net.eratiem.kotlinprovider.paper
+package net.eratiem.kotlinprovider.bungee
 
-import org.bukkit.plugin.java.JavaPlugin
+import net.md_5.bungee.api.plugin.Plugin
 
-class KotlinProviderPlugin : JavaPlugin() {
+class KotlinProviderPlugin : Plugin() {
 
     override fun onEnable() {
         logger.info("Kotlin can now be used!")
