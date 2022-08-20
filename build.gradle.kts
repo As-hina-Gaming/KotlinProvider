@@ -8,14 +8,13 @@ plugins {
     val shadowVersion: String by System.getProperties()
 
     kotlin("jvm").version(kotlinVersion)
-    kotlin("kapt").version(kotlinVersion)
     id("com.github.johnrengelman.shadow").version(shadowVersion)
 
     id("maven-publish")
 }
 
 group = "net.eratiem"
-version = "1.7.10"
+version = "0.1-SNAPSHOT"
 
 repositories {
     maven {
@@ -27,14 +26,17 @@ repositories {
 
 dependencies {
     val kotlinVersion: String by System.getProperties()
-    val paperApiVersion: String by project
-    val velocityApiVersion: String by project
+    val spigotApiVersion: String? by project
+    val paperApiVersion: String? by project
+    val bungeeApiVersion: String? by project
+    val velocityApiVersion: String? by project
 
     implementation(kotlin("stdlib", kotlinVersion))
 
-    compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
-    compileOnly("com.velocitypowered", "velocity-api", velocityApiVersion)
-    kapt("com.velocitypowered", "velocity-api", velocityApiVersion)
+    if (!spigotApiVersion.isNullOrBlank()) compileOnly("org.spigotmc", "spigot-api", spigotApiVersion)
+    if (!paperApiVersion.isNullOrBlank()) compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
+    if (!bungeeApiVersion.isNullOrBlank()) compileOnly("net.md-5", "bungeecord-api", bungeeApiVersion)
+    if (!velocityApiVersion.isNullOrBlank()) compileOnly("com.velocitypowered", "velocity-api", velocityApiVersion)
 }
 
 val jarTasks: MutableSet<TaskProvider<ShadowJar>> = mutableSetOf()
@@ -44,25 +46,26 @@ tasks {
     withType<Copy> {
         outputs.upToDateWhen { false }
 
-        filesMatching("plugin.yml") {
-            val mainClass =
-                "${project.group}.${project.name.toLowerCaseAsciiOnly()}.paper.${project.properties["mainClass"]}"
-            val apiVersion =
-                "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
-            val pluginDescription: String by project
-            val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
-            val authors: String = getAsYamlList(project.properties["authors"])
+        val mainClass = "${project.group}.${project.name.toLowerCase()}.${project.properties["mainClass"]}"
+        val apiVersion =
+            "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
+        val pluginDescription: String by project
+        val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
+        val pluginSoftDependencies = getAsYamlList(project.properties["pluginSoftdependencies"])
+        val authors: String = getAsYamlList(project.properties["authors"])
 
-            val props: LinkedHashMap<String, String> = linkedMapOf(
-                "plugin_name" to project.name,
-                "plugin_description" to pluginDescription,
-                "plugin_version" to version.toString(),
-                "plugin_main_class" to mainClass,
-                "plugin_api_version" to apiVersion,
-                "plugin_dependencies" to pluginDependencies,
-                "plugin_authors" to authors
-            )
+        val props: LinkedHashMap<String, String> = linkedMapOf(
+            "plugin_name" to project.name,
+            "plugin_description" to pluginDescription,
+            "plugin_version" to version.toString(),
+            "plugin_main_class" to mainClass,
+            "plugin_api_version" to apiVersion,
+            "plugin_dependencies" to pluginDependencies,
+            "plugin_softdependencies" to pluginSoftDependencies,
+            "plugin_authors" to authors
+        )
 
+        filesMatching(setOf("plugin.yml", "bungee.yml")) {
             expand(props)
         }
     }
@@ -73,56 +76,34 @@ tasks {
 
     project.configurations.implementation.get().isCanBeResolved = true
 
-    registerShadowJarJob(
-        "velocityJar", listOf(
-            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
-            "plugin.yml"
-        ),
-        "velocity"
-    )
-
-    registerShadowJarJob(
-        "paperJar", listOf(
-            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/paper/**",
-            "velocity-plugin.json"
-        ),
-        "paper"
-    )
-
-    registerShadowJarJob(
-        "onlyKotlinJar", listOf(
-            "${project.group.toString().replace('.', '/')}/${project.name.toLowerCaseAsciiOnly()}/**",
-            "velocity-plugin.json",
-            "paper.yml"
-        ),
-        ""
-    )
+    getJarTaskExcludes().forEach { (name, excludes) -> registerShadowJarTask(name, excludes) }
 
     build {
         jarTasks.forEach(this::dependsOn)
     }
 
-    //
-    create("copyPluginToPaperServer") {
+    create("copyPluginToServer") {
         dependsOn(build)
+
         group = "plugin"
         enabled = false
+
+        outputs.upToDateWhen { false }
 
         val serverPath: String by project
 
         if (serverPath.isNotBlank() && File(serverPath).exists()) {
-            outputs.upToDateWhen { false }
             val libsDir = File("${project.buildDir.absolutePath}${File.separator}libs")
             val destinationFile =
                 File("$serverPath${File.separator}plugins${File.separator}${rootProject.name.toLowerCase()}.jar")
-            val paperJarFiles: List<File>? =
-                libsDir.listFiles()?.filter { it.extension == "jar" && it.name.contains("Paper") }
+            val jarFiles: List<File>? = libsDir.listFiles()?.filter { it.extension == "jar" }
 
-            if (paperJarFiles?.size == 1) {
-                paperJarFiles[0].copyTo(
+            if (jarFiles?.size == 1) {
+                jarFiles[0].copyTo(
                     destinationFile,
                     true
                 )
+
                 enabled = destinationFile.exists()
             }
         }
@@ -130,27 +111,32 @@ tasks {
 
     create<Copy>("generateIntelliJRunConfig") {
         group = "plugin"
-        enabled = true
+        enabled = false
 
         from("./runConfigs")
         destinationDir = File("./.idea/runConfigurations")
         include("intellij.xml")
 
-        val serverPath: String by project
-        enabled = serverPath.isNotBlank()
+        val serverPath: String? by project
 
-        val paperFile: File? =
-            File(serverPath).listFiles()?.filter { it.name.matches("paper.*\\.jar".toRegex()) }?.get(0)
-        enabled = paperFile != null
+        serverPath?.let { path ->
+            if (path.isNotBlank() && File(path).exists()) {
 
-        if (paperFile != null && paperFile.exists()) {
-            val props: LinkedHashMap<String, String> = linkedMapOf(
-                "server_path" to File(serverPath).absolutePath,
-                "project_dir" to "\$PROJECT_DIR\$"
-            )
+                val paperFile: File? =
+                    File(path).listFiles()?.filter { it.name.matches("paper.*\\.jar".toRegex()) }?.get(0)
 
-            filesMatching("intellij.xml") {
-                expand(props)
+                if (paperFile != null && paperFile.exists()) {
+                    val props: LinkedHashMap<String, String> = linkedMapOf(
+                        "server_path" to File(path).absolutePath,
+                        "project_dir" to "\$PROJECT_DIR\$"
+                    )
+
+                    filesMatching("intellij.xml") {
+                        expand(props)
+                    }
+
+                    enabled = true
+                }
             }
         }
     }
@@ -171,11 +157,9 @@ tasks {
     }
 }
 
-
-
 publishing {
     publications {
-        create<MavenPublication>("artifactory") {
+        create<MavenPublication>("maven-java") {
             groupId = project.group.toString()
             artifactId = project.name.toLowerCase()
             version = project.version.toString()
@@ -196,8 +180,52 @@ publishing {
     }
 }
 
-fun registerShadowJarJob(name: String, excludes: List<String>, classifier: String) {
-    jarTasks.add(tasks.register<ShadowJar>(name) {
+fun getJarTaskExcludes(): Map<String, Set<String>> {
+    val workingPackage = "${project.group.toString().replace('.', '/')}/${
+        project.name.toLowerCaseAsciiOnly().replace("""[^\w\d]""".toRegex(), "")
+    }"
+
+    val enableSpigot: Boolean = File(projectDir, "src/main/kotlin/$workingPackage/spigot").exists()
+    val enablePaper: Boolean = File(projectDir, "src/main/kotlin/$workingPackage/paper").exists()
+    val enableBungee: Boolean = File(projectDir, "src/main/kotlin/$workingPackage/bungee").exists()
+    val enableVelocity: Boolean = File(projectDir, "src/main/kotlin/$workingPackage/velocity").exists()
+    val enableDependency: String by project
+
+    val jarTaskExcludes: MutableMap<String, Set<String>> = mutableMapOf()
+
+    if (enableSpigot) jarTaskExcludes["spigot"] = setOf(
+        "$workingPackage/spigot/**",
+        "bungee.yml",
+        "velocity-plugin.json"
+    )
+    if (enablePaper) jarTaskExcludes["paper"] = setOf(
+        "$workingPackage/paper/**",
+        "bungee.yml",
+        "velocity-plugin.json"
+    )
+    if (enableBungee) jarTaskExcludes["bungee"] = setOf(
+        "$workingPackage/bungee/**",
+        "plugin.yml",
+        "velocity-plugin.json"
+    )
+    if (enableVelocity) jarTaskExcludes["velocity"] =
+        setOf(
+            "$workingPackage/velocity/**",
+            "plugin.yml",
+            "bungee.yml"
+        )
+    if (enableDependency.toBoolean()) jarTaskExcludes[""] = setOf(
+        "$workingPackage/**",
+        "plugin.yml",
+        "bungee.yml",
+        "velocity-plugin.json"
+    )
+
+    return jarTaskExcludes
+}
+
+fun registerShadowJarTask(classifier: String, excludes: Set<String>) {
+    jarTasks.add(tasks.register<ShadowJar>("${classifier}Jar") {
         group = "plugin"
         enabled = true
 
