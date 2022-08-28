@@ -13,9 +13,9 @@ import javax.inject.Inject
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins", authors = ["Motzkiste"]
 )
 class KotlinProviderPlugin @Inject constructor(
-    private val name: String,
     logger: Logger
 ) {
+    private val name = "KotlinProvider"
 
     private var logger: EraLogger = EraLogger.getInstance(name, logger)
 
