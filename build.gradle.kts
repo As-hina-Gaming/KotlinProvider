@@ -27,12 +27,14 @@ repositories {
 
 dependencies {
     val kotlinVersion: String by System.getProperties()
+    val eralogger: String by project
     val spigotApiVersion: String? by project
     val paperApiVersion: String? by project
     val bungeeApiVersion: String? by project
     val velocityApiVersion: String? by project
 
     implementation(kotlin("stdlib", kotlinVersion))
+    implementation("net.eratiem", "eralogger", eralogger)
 
     if (!spigotApiVersion.isNullOrBlank()) compileOnly("org.spigotmc", "spigot-api", spigotApiVersion)
     if (!paperApiVersion.isNullOrBlank()) compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
