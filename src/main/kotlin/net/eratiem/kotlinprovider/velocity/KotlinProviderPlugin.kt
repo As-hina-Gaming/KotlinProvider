@@ -8,7 +8,7 @@ import java.util.logging.Logger
 import javax.inject.Inject
 
 @Plugin(
-    id = "kotlinprovider", name = "KotlinProvider", version = "1.7.10",
+    id = "kotlinprovider", name = "KotlinProvider", version = "1.7.20-Beta",
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins", authors = ["Motzkiste"]
 )
 class KotlinProviderPlugin @Inject constructor(private val logger: Logger) {
