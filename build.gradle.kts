@@ -19,42 +19,43 @@ version = "1.7.20-Beta"
 
 repositories {
     maven {
-        url = uri("https://artifactory.bit-build.de/artifactory/all")
+        url = uri("https://artifactory.bit-build.de/artifactory/public")
 
+        // Only needed for local repos that need authentication (for example snapshot-repos)
         bitBuildCredentials(this)
     }
 }
 
 dependencies {
     val kotlinVersion: String by System.getProperties()
-    val eralogger: String by project
-    val spigotApiVersion: String? by project
-    val paperApiVersion: String? by project
-    val bungeeApiVersion: String? by project
-    val velocityApiVersion: String? by project
+    val spigotApiDependency: String? by project
+    val paperApiDependency: String? by project
+    val bungeeApiDependency: String? by project
+    val velocityApiDependency: String? by project
+    val eraloggerVersion: String by project
 
-    implementation(kotlin("stdlib", kotlinVersion))
-    implementation("net.eratiem", "eralogger", eralogger)
-
-    if (!spigotApiVersion.isNullOrBlank()) compileOnly("org.spigotmc", "spigot-api", spigotApiVersion)
-    if (!paperApiVersion.isNullOrBlank()) compileOnly("io.papermc.paper", "paper-api", paperApiVersion)
-    if (!bungeeApiVersion.isNullOrBlank()) compileOnly("net.md-5", "bungeecord-api", bungeeApiVersion)
-    if (!velocityApiVersion.isNullOrBlank()) {
-        compileOnly("com.velocitypowered", "velocity-api", velocityApiVersion)
-        kapt("com.velocitypowered", "velocity-api", velocityApiVersion)
+    if (kotlinVersion.isNotBlank()) implementation(kotlin("stdlib", kotlinVersion))
+    if (eraloggerVersion.isNotBlank()) implementation("net.eratiem", "eralogger", eraloggerVersion)
+    if (!spigotApiDependency.isNullOrBlank()) compileOnly("org.spigotmc", "spigot-api", spigotApiDependency)
+    if (!paperApiDependency.isNullOrBlank()) compileOnly("io.papermc.paper", "paper-api", paperApiDependency)
+    if (!bungeeApiDependency.isNullOrBlank()) compileOnly("net.md-5", "bungeecord-api", bungeeApiDependency)
+    if (!velocityApiDependency.isNullOrBlank()) {
+        compileOnly("com.velocitypowered", "velocity-api", velocityApiDependency)
+        kapt("com.velocitypowered", "velocity-api", velocityApiDependency)
     }
 }
 
 val jarTasks: MutableSet<TaskProvider<ShadowJar>> = mutableSetOf()
 
 tasks {
-    // Write Properties into plugin.yml
+
+    /**
+     * Copy Task to fill plugin.yml and bungee.yml
+     */
     withType<Copy> {
         outputs.upToDateWhen { false }
 
         val mainClass = "${project.group}.${project.name.toLowerCase()}.${project.properties["mainClass"]}"
-        val apiVersion =
-            "(\\d+\\.\\d+){1}(\\.\\d+)?".toRegex().find(project.properties["paperApiVersion"] as String)!!.value
         val pluginDescription: String by project
         val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
         val pluginSoftDependencies = getAsYamlList(project.properties["pluginSoftdependencies"])
@@ -65,29 +66,37 @@ tasks {
             "plugin_description" to pluginDescription,
             "plugin_version" to version.toString(),
             "plugin_main_class" to mainClass,
-            "plugin_api_version" to apiVersion,
             "plugin_dependencies" to pluginDependencies,
             "plugin_softdependencies" to pluginSoftDependencies,
             "plugin_authors" to authors
         )
 
         filesMatching(setOf("plugin.yml", "bungee.yml")) {
+            val api = if (this.sourceName.contains("plugin")) "pluginApiVersion" else "bungeeApiVersion"
+            props["plugin_api_version"] = (project.properties[api] as String?) ?: ""
+
             expand(props)
         }
     }
 
+    // Disable standart jar task
     jar {
         enabled = false
     }
 
     project.configurations.implementation.get().isCanBeResolved = true
 
+    // Register ShadowJar-Tasks with excludes
     getJarTaskExcludes().forEach { (name, excludes) -> registerShadowJarTask(name, excludes) }
 
+    // Add ShadowJar Tasks as dependency to build
     build {
         jarTasks.forEach(this::dependsOn)
     }
 
+    /**
+     * Create task to copy plugin to paper server
+     */
     create("copyPluginToServer") {
         dependsOn(build)
 
@@ -115,6 +124,9 @@ tasks {
         }
     }
 
+    /**
+     * Create task to run paper server
+     */
     create<Copy>("generateIntelliJRunConfig") {
         group = "plugin"
         enabled = false
@@ -163,29 +175,9 @@ tasks {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven-java") {
-            groupId = project.group.toString()
-            artifactId = project.name.toLowerCase()
-            version = project.version.toString()
-
-            jarTasks.forEach(this::artifact)
-        }
-    }
-    repositories {
-        maven {
-            url = uri(
-                "https://artifactory.bit-build.de/artifactory/eratiem"
-                        + (if (project.version.toString().contains("SNAPSHOT"))
-                    "-snapshots" else "")
-            )
-
-            bitBuildCredentials(this)
-        }
-    }
-}
-
+/**
+ * Get Jar-Task excludes to generate clean jars
+ */
 fun getJarTaskExcludes(): Map<String, Set<String>> {
     val workingPackage = "${project.group.toString().replace('.', '/')}/${
         project.name.toLowerCaseAsciiOnly().replace("""[^\w\d]""".toRegex(), "")
@@ -240,6 +232,37 @@ fun getJarTaskExcludes(): Map<String, Set<String>> {
     return jarTaskExcludes
 }
 
+publishing {
+    publications {
+        create<MavenPublication>("maven-java") {
+            groupId = project.group.toString()
+            artifactId = project.name.toLowerCase()
+            version = project.version.toString()
+
+            jarTasks.forEach(this::artifact)
+        }
+    }
+    repositories {
+        maven {
+            url = uri(
+                "https://artifactory.bit-build.de/artifactory/eratiem"
+                        + (if (project.version.toString().contains("SNAPSHOT"))
+                    "-snapshots" else "")
+            )
+
+            bitBuildCredentials(this)
+        }
+        maven {
+            url = uri("https://maven.pkg.github.com/EraTiem-Network/${project.name}")
+
+            githubPackageCredentials(this)
+        }
+    }
+}
+
+/**
+ * Register ShadowJar-Task with excludes and archive name
+ */
 fun registerShadowJarTask(classifier: String, excludes: Set<String>) {
     jarTasks.add(tasks.register<ShadowJar>("${classifier}Jar") {
         group = "plugin"
@@ -256,9 +279,14 @@ fun registerShadowJarTask(classifier: String, excludes: Set<String>) {
     })
 }
 
+
+/**
+ * parse comma seperated lists to
+ */
 fun getAsYamlList(commaSeparatedList: Any?): String {
     if (commaSeparatedList is String && commaSeparatedList.isNotBlank()) {
         return commaSeparatedList
+            .replace(" ", "")
             .split(",")
             .stream()
             .map { "\n  - $it" }
@@ -267,9 +295,22 @@ fun getAsYamlList(commaSeparatedList: Any?): String {
     return ""
 }
 
+/**
+ * Get credentials for Bit-Build's Artifactory (https://artifactory.bit-build.de)
+ */
 fun bitBuildCredentials(maven: MavenArtifactRepository) {
     maven.credentials {
         username = System.getenv("ARTIFACTORY_USER")
         password = System.getenv("ARTIFACTORY_PASS")
+    }
+}
+
+/**
+ * Get credentials for Github-Packages
+ */
+fun githubPackageCredentials(maven: MavenArtifactRepository) {
+    maven.credentials {
+        username = System.getenv("GITHUB_USER")
+        password = System.getenv("GITHUB_TOKEN")
     }
 }
