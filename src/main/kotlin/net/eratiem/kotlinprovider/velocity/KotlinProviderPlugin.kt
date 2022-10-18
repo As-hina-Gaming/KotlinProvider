@@ -1,5 +1,6 @@
 package net.eratiem.kotlinprovider.velocity
 
+import com.velocitypowered.api.event.PostOrder
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
@@ -19,12 +20,12 @@ class KotlinProviderPlugin @Inject constructor(
 
     private var logger: EraLogger = EraLogger.getInstance(name, logger)
 
-    @Subscribe
+    @Subscribe(order = PostOrder.FIRST)
     fun onEnable(event: ProxyInitializeEvent) {
         logger.info("Kotlin can now be used!")
     }
 
-    @Subscribe
+    @Subscribe(order = PostOrder.LAST)
     fun onDisable(event: ProxyShutdownEvent) {
         logger.info("Kotlin is no longer useable!")
         EraLogger.destroyInstance(name)
