@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "net.eratiem"
-version = "1.7.20"
+version = "1.8.0"
 
 repositories {
     maven {
@@ -301,7 +301,7 @@ fun getAsYamlList(commaSeparatedList: Any?): String {
 fun bitBuildCredentials(maven: MavenArtifactRepository) {
     maven.credentials {
         username = System.getenv("ARTIFACTORY_USER")
-        password = System.getenv("ARTIFACTORY_PASS")
+        password = System.getenv("ARTIFACTORY_TOKEN")
     }
 }
 
