@@ -1,11 +1,12 @@
-package net.eratiem.kotlinprovider.spigot
+package net.eratiem.kotlinprovider
 
 import net.eratiem.eralogger.tools.EraLogger
-import org.bukkit.plugin.java.JavaPlugin
-import org.slf4j.Logger
+import net.md_5.bungee.api.plugin.Plugin
+import java.util.logging.Logger
 
-class KotlinProviderPlugin : JavaPlugin() {
+class KotlinProviderPlugin : Plugin() {
     private lateinit var logger: EraLogger
+    private val name = "KotlinProvider"
 
     override fun onEnable() {
         logger = EraLogger.getInstance(name, getLogger() as Logger)

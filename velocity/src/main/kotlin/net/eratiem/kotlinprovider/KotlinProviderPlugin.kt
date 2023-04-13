@@ -1,4 +1,4 @@
-package net.eratiem.kotlinprovider.velocity
+package net.eratiem.kotlinprovider
 
 import com.velocitypowered.api.event.PostOrder
 import com.velocitypowered.api.event.Subscribe
@@ -6,11 +6,11 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
 import com.velocitypowered.api.plugin.Plugin
 import net.eratiem.eralogger.tools.EraLogger
-import org.slf4j.Logger
+import java.util.logging.Logger
 import javax.inject.Inject
 
 @Plugin(
-    id = "kotlinprovider", name = "KotlinProvider", version = "1.8.20-RC",
+    id = "kotlinprovider", name = "KotlinProvider", version = "1.8.20",
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins", authors = ["Motzkiste"]
 )
 class KotlinProviderPlugin @Inject constructor(
