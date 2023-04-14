@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.eratiem"
-version = "1.8.20"
+version = "1.6.0"
 
 subprojects {
   this.group = rootProject.group
@@ -31,9 +31,7 @@ subprojects {
     if (tools != null && tools != project) implementation(project(":tools"))
 
     compileOnly(rootProject.libs.kotlin.gradleplugin)
-    compileOnly(rootProject.libs.kotlin.stdlib)
-
-    implementation(rootProject.libs.minecraft.plugin.eralogger)
+    implementation(rootProject.libs.kotlin.stdlib)
   }
 
   configurations {
@@ -74,7 +72,7 @@ subprojects {
         val authors: String = getAsYamlList(project.properties["authors"])
 
         val props: LinkedHashMap<String, String> = linkedMapOf(
-          "plugin_name" to project.name,
+          "plugin_name" to rootProject.name,
           "plugin_description" to pluginDescription,
           "plugin_version" to version.toString(),
           "plugin_main_class" to mainClass,
