@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.util.capitalizeDecapitalize.toUpperCaseAsciiOnly
 import java.util.stream.Collectors
 
 plugins {
@@ -52,7 +51,9 @@ subprojects {
       )
 
       archiveBaseName.set(rootProject.name)
-      archiveClassifier.set(project.name)
+      archiveClassifier.set(null as String?)
+      if (project.name != "tools")
+        archiveAppendix.set(project.name)
 
     }
     if (project.name == "tools")
@@ -151,9 +152,11 @@ fun RepositoryHandler.bitBuildArtifactory(
   val url: String
   val name: String
   if (publish) {
-    val isSnapshot = project.version.toString().toUpperCaseAsciiOnly().contains("SNAPSHOT")
-    url = "https://artifactory.bit-build.de/artifactory/eratiem${if (isSnapshot) "-snapshots" else ""}"
-    name = "BitBuildArtifactoryEraTiem${if (isSnapshot) "Snapshots" else ""}"
+    val nonReleaseStrings = listOf("snapshot", "alpha", "beta", "rc")
+    val isNonRelease =
+      nonReleaseStrings.any { project.version.toString().contains(it, true) }
+    url = "https://artifactory.bit-build.de/artifactory/eratiem${if (isNonRelease) "-snapshots" else ""}"
+    name = "BitBuildArtifactoryEraTiem${if (isNonRelease) "Snapshots" else ""}"
 
   } else {
     url = "https://artifactory.bit-build.de/artifactory/public"
