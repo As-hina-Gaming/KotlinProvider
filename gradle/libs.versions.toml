@@ -1,5 +1,5 @@
 [versions]
-kotlin = "1.6.0"
+kotlin = "1.6.10"
 shadow = "8.1.1"
 run = "2.0.1"
 
