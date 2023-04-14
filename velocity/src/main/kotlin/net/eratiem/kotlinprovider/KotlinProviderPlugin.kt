@@ -9,7 +9,7 @@ import java.util.logging.Logger
 import javax.inject.Inject
 
 @Plugin(
-    id = "kotlinprovider", name = "KotlinProvider", version = "1.8.10",
+    id = "kotlinprovider", name = "KotlinProvider", version = "1.8.20",
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins", authors = ["Motzkiste"]
 )
 class KotlinProviderPlugin @Inject constructor(
