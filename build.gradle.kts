@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.eratiem"
-version = "1.6.10"
+version = libs.versions.kotlin.get()
 
 subprojects {
   this.group = rootProject.group
