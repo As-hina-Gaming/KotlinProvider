@@ -27,7 +27,7 @@ subprojects {
 
   dependencies {
     val tools: Project? = findProject(":tools")
-    if (tools != null && tools != project) implementation(project(":tools"))
+    if (tools != null && tools != project) implementation(project(path = ":tools", configuration = "shadow"))
 
     compileOnly(rootProject.libs.kotlin.gradleplugin)
     implementation(rootProject.libs.kotlin.stdlib)
@@ -119,17 +119,15 @@ subprojects {
   }
 }
 
-fun getAsYamlList(commaSeparatedList: Any?): String {
+fun getAsYamlList(commaSeparatedList: Any?): String =
   if (commaSeparatedList is String && commaSeparatedList.isNotBlank()) {
-    return commaSeparatedList
+    commaSeparatedList
       .replace(" ", "")
       .split(",")
       .stream()
       .map { "\n  - $it" }
       .collect(Collectors.joining())
-  }
-  return ""
-}
+  } else ""
 
 repositories {
   bitBuildArtifactory()
