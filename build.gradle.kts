@@ -4,6 +4,8 @@ import java.util.stream.Collectors
 plugins {
   alias(libs.plugins.kotlin.jvm)
   alias(libs.plugins.shadow)
+
+  idea
 }
 
 group = "net.eratiem"
@@ -141,6 +143,13 @@ tasks {
 
   shadowJar {
     enabled = false
+  }
+}
+
+idea {
+  module {
+    isDownloadSources = true
+    isDownloadJavadoc = true
   }
 }
 
