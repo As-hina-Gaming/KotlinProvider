@@ -8,6 +8,6 @@ dependencies {
 
 tasks {
     runPaper.folia.registerTask {
-        minecraftVersion("1.20.2")
+        minecraftVersion("1.20.1")
     }
 }
