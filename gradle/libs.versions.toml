@@ -4,11 +4,11 @@ shadow = "8.1.1"
 run = "2.2.0"
 
 # Minecraft Software
-spigot = "1.20.1-R0.1-SNAPSHOT"
-paper = "1.20.1-R0.1-SNAPSHOT"
-folia = "1.20.1-R0.1-SNAPSHOT"
-bungeecord = "1.20-R0.1-SNAPSHOT"
-waterfall = "1.20-R0.1-SNAPSHOT"
+spigot = "1.20.2-experimental-SNAPSHOT"
+paper = "1.20.2-R0.1-SNAPSHOT"
+folia = "1.20.2-R0.1-SNAPSHOT"
+bungeecord = "1.20-R0.2-SNAPSHOT"
+waterfall = "1.20-R0.2-SNAPSHOT"
 velocity = "3.2.0-SNAPSHOT"
 
 # Plugin Values
@@ -32,6 +32,8 @@ minecraft-proxy-velocity = { group = "com.velocitypowered", name = "velocity-api
 
 # Minecraft Plugin Dependencies
 minecraft-plugin-eralogger = { group = "net.eratiem", name = "eralogger", version = "1.0.0.alpha1" }
+
+snakeyaml = { group = "org.snakeyaml", name = "snakeyaml-engine", version = "2.7" }
 
 [plugins]
 shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }

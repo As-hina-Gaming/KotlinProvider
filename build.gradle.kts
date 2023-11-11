@@ -1,5 +1,12 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.snakeyaml.engine.v2.api.Dump
+import org.snakeyaml.engine.v2.api.DumpSettings
+import org.snakeyaml.engine.v2.api.Load
+import org.snakeyaml.engine.v2.api.LoadSettings
 import java.util.stream.Collectors
+
+group = "net.eratiem"
+version = libs.versions.kotlin.get()
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
@@ -8,8 +15,27 @@ plugins {
   idea
 }
 
-group = "net.eratiem"
-version = libs.versions.kotlin.get()
+// Load SnakeYaml
+buildscript {
+  dependencies {
+    classpath(libs.snakeyaml)
+  }
+}
+
+// Command YAMLs
+val yamlLoad by lazy { Load(LoadSettings.builder().build()) }
+val yamlDump by lazy { Dump(DumpSettings.builder().build()) }
+val loadYaml = { it: String ->
+  val file = project.file(it)
+  if (!file.exists()) file.createNewFile()
+
+  project.file(it).bufferedReader().use { reader ->
+    yamlLoad.loadFromReader(reader) as? LinkedHashMap<*, *>
+  }
+}
+val commands by lazy { loadYaml("commands.yml") }
+val proxyCommands by lazy { loadYaml("proxyCommands.yml") }
+
 
 subprojects {
   this.group = rootProject.group
@@ -73,6 +99,14 @@ subprojects {
         val pluginDependencies = getAsYamlList(project.properties["pluginDependencies"])
         val pluginSoftDependencies = getAsYamlList(project.properties["pluginSoftdependencies"])
         val authors: String = getAsYamlList(project.properties["authors"])
+        val commands: String = if (
+          (project.properties["splitCommandYaml"] as? Boolean == true) &&
+          project.name in arrayOf("bungeecord", "waterfall")
+        ) {
+          commands?.let { commandsDumpOptimization(yamlDump.dumpToString(it)) } ?: "[]"
+        } else {
+          proxyCommands?.let { commandsDumpOptimization(yamlDump.dumpToString(it)) } ?: "[]"
+        }
 
         val props: LinkedHashMap<String, String> = linkedMapOf(
           "plugin_name" to rootProject.name,
@@ -81,7 +115,8 @@ subprojects {
           "plugin_main_class" to mainClass,
           "plugin_dependencies" to pluginDependencies,
           "plugin_softdependencies" to pluginSoftDependencies,
-          "plugin_authors" to authors
+          "plugin_authors" to authors,
+          "plugin_commands" to commands
         )
 
         filesMatching("plugin.yml") {
@@ -131,6 +166,11 @@ fun getAsYamlList(commaSeparatedList: Any?): String =
       .collect(Collectors.joining())
   } else ""
 
+fun commandsDumpOptimization(commandsDump: String?) = commandsDump?.let {
+  it.split("\n")
+    .joinToString("\n", "\n") { line -> "  $line" }
+}
+
 repositories {
   bitBuildArtifactory()
 }
@@ -162,15 +202,15 @@ fun RepositoryHandler.bitBuildArtifactory(
     val nonReleaseStrings = listOf("snapshot", "alpha", "beta", "rc")
     val isNonRelease =
       nonReleaseStrings.any { project.version.toString().contains(it, true) }
-    url = "https://artifactory.bit-build.de/artifactory/eratiem${if (isNonRelease) "-snapshots" else ""}"
-    name = "BitBuildArtifactoryEraTiem${if (isNonRelease) "Snapshots" else ""}"
+    url = "https://packages.bit-build.de/maven/p/eratiem-network/eratiem"
+    name = "BitBuildSpaceEraTiem"
 
   } else {
     url = "https://artifactory.bit-build.de/artifactory/public"
     name = "BitBuildArtifactoryPublic"
   }
 
-  return if (publish || useCredentials) createMavenRepo(url, name, "ARTIFACTORY_USER", "ARTIFACTORY_TOKEN")
+  return if (publish || useCredentials) createMavenRepo(url, name, "SPACE_USER", "SPACE_TOKEN")
   else createMavenRepo(url, name)
 }
 
