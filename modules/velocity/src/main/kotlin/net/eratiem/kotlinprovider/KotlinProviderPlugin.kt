@@ -21,5 +21,18 @@ import javax.inject.Inject
     Dependency(id = "kotlinprovider", optional = false)
   ]
 )
+class KotlinProviderPlugin @Inject constructor(
+  private val logger: Logger
+) {
+  private val name = "KotlinProvider"
+
+  @Subscribe(order = PostOrder.FIRST)
+  fun onEnable(event: ProxyInitializeEvent) {
+    logger.info("Kotlin can now be used!")
+  }
+
+  @Subscribe(order = PostOrder.LAST)
+  fun onDisable(event: ProxyShutdownEvent) {
+    logger.info("Kotlin is no longer useable!")
   }
 }
