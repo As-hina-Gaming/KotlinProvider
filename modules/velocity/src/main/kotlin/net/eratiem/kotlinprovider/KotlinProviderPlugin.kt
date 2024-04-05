@@ -17,9 +17,7 @@ import javax.inject.Inject
   authors = [
     "Motzkiste"
   ],
-  dependencies = [
-    Dependency(id = "kotlinprovider", optional = false)
-  ]
+  dependencies = []
 )
 class KotlinProviderPlugin @Inject constructor(
   private val logger: Logger
