@@ -1,5 +1,5 @@
 [versions]
-kotlin = "1.9.23"
+kotlin = "2.0.0-RC1"
 shadow = "8.1.1"
 run = "2.2.3"
 paperweight = "1.5.11"
