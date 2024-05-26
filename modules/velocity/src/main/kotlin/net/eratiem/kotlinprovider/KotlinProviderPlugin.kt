@@ -12,14 +12,12 @@ import javax.inject.Inject
 @Plugin(
   id = "kotlinprovider",
   name = "KotlinProvider",
-  version = "1.9.23",
+  version = "2.0.0-RC1",
   description = "EraTiem-Networks plugin to provide Kotlin for other Plugins",
   authors = [
     "Motzkiste"
   ],
-  dependencies = [
-    Dependency(id = "kotlinprovider", optional = false)
-  ]
+  dependencies = []
 )
 class KotlinProviderPlugin @Inject constructor(
   private val logger: Logger

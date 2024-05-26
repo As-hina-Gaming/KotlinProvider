@@ -15,9 +15,6 @@ projectSettings {
 
   proxyPluginProperties {
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins"
-    dependencies {
-      add("KotlinProvider")
-    }
   }
 
   serverPluginProperties {
@@ -26,9 +23,6 @@ projectSettings {
     }
     mainClass = "KotlinProviderPlugin"
     description = "EraTiem-Networks plugin to provide Kotlin for other Plugins"
-    dependencies {
-      add("KotlinProvider")
-    }
   }
 }
 
